@@ -1,6 +1,7 @@
 module httparse;
 
 import std.conv : to;
+import std.ascii : isDigit;
 
 
 debug(httparse) import std.stdio : writeln;
@@ -191,22 +192,16 @@ Result newline(ubyte[] buf)
 Result parse_version(ubyte[] buf)
 {
   uint i = 0;
-  if (buf[i] != 'H'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
-  ++i;
-  if (buf[i] != 'T'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
-  ++i;
-  if (buf[i] != 'T'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
-  ++i;
-  if (buf[i] != 'P'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
-  ++i;
-  if (buf[i] != '/'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
-  ++i;
-  if (buf[i] != '1'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
-  ++i;
-  if (buf[i] != '.'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
-  ++i;
 
-  if (buf[i] == '1'.to!ubyte) {
+  if (buf[i] != 'H'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
+  if (buf[++i] != 'T'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
+  if (buf[++i] != 'T'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
+  if (buf[++i] != 'P'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
+  if (buf[++i] != '/'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
+  if (buf[++i] != '1'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
+  if (buf[++i] != '.'.to!ubyte) return Result(Status.Error, Error.HttpVersion);
+
+  if (buf[++i] == '1'.to!ubyte) {
     return Result(Status.Complete, i);
   }
   else if (buf[i] == '0'.to!ubyte) {
@@ -214,7 +209,6 @@ Result parse_version(ubyte[] buf)
   }
   return Result(Status.Error, Error.HttpVersion);
 }
-
 
 
 unittest
@@ -230,5 +224,105 @@ unittest
 
   string buffer = "GET / HTTP/1.1\r\n\r\n";
   auto result = req.parse(cast(ubyte[]) buffer);
+  debug(httparse) result.writeln;
+}
+
+
+class Response
+{
+  ubyte[] http_version;
+  ushort code;
+  string reason;
+  Headers headers;
+
+  this(Headers _headers)
+  {
+    headers = _headers;
+  }
+
+  Result parse(ubyte[] buf)
+  {
+    ulong prev;
+
+    ulong original_length = buf.length;
+    Result result = parse_version(buf[0 .. $]);
+    if (result.status != Status.Complete) {
+      return result;
+    }
+    http_version = buf[0 .. result.sep+1];
+    debug(httparse) writeln("HTTP_VERSION: ", cast(char[]) http_version);
+    prev = result.sep+2;
+
+    result = parse_code(buf[prev .. prev+3]);
+    if (result.status != Status.Complete) {
+      return result;
+    }
+    code = result.sep.to!ushort;
+    debug(httparse) writeln("status code: ", code);
+    prev += 4;
+
+    result = parse_reason(buf[prev .. $]);
+    if (result.status != Status.Complete) {
+      return result;
+    }
+    reason = cast(string) cast(char[]) buf[prev .. prev+result.sep+1];
+    debug(httparse) writeln("reason phrase: ", reason);
+
+    return Result(Status.Complete, original_length);
+  }
+
+  Result parse_code(ubyte[] buf)
+  {
+    int i;
+
+    if (!buf[i].isDigit) {
+      return Result(Status.Error, Error.StatusError);
+    }
+    ubyte hundreds = buf[i];
+
+    if (!buf[++i].isDigit) {
+      return Result(Status.Error, Error.StatusError);
+    }
+    ubyte tens = buf[i];
+
+    if (!buf[++i].isDigit) {
+      return Result(Status.Error, Error.StatusError);
+    }
+    ubyte ones = buf[i];
+
+    return Result(Status.Complete,
+                  (hundreds - '0'.to!ubyte) * 100 +
+                  (tens - '0'.to!ubyte) * 10 +
+                  (ones -  '0'.to!ubyte));
+  }
+
+  Result parse_reason(ubyte[] buf)
+  {
+    foreach (i, b; buf) {
+      if (b == '\r'.to!ubyte || b == '\n'.to!ubyte) {
+        return Result(Status.Complete, i);
+      }
+      else if (!((b >= 0x20 && b <= 0x7E) || b == '\t'.to!ubyte)) {
+        return Result(Status.Error, Error.StatusError);
+      }
+    }
+    assert(false);
+  }
+}
+
+
+unittest
+{
+  Header*[] arr = [new Header(null, null),
+                   new Header(null, null),
+                   new Header(null, null),
+                   new Header(null, null)];
+
+  auto headers = new Headers(arr);
+
+  auto res = new Response(headers);
+
+  string buffer = "HTTP/1.1 200 OK\r\n\r\n";
+  auto result = res.parse(cast(ubyte[]) buffer);
   debug(httparse) result.writeln;
 }
