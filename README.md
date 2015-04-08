@@ -16,8 +16,8 @@ HTTP 1.x parser.
 
 Simply,
 
-`$ rdmd -unittest -main source/httparse`
+`$ rdmd -unittest -main source/httparse.d`
 
 With debug,
 
-`$ rdmd -debug=httparse -unittest -main source/httparse`
+`$ rdmd -debug=httparse -unittest -main source/httparse.d`
