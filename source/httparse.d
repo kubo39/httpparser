@@ -257,9 +257,8 @@ class Response
     if (result.status != Status.Complete) {
       return result;
     }
-    code = result.sep.to!ushort;
     debug(httparse) writeln("status code: ", code);
-    prev += 4;
+    prev += result.sep+1;
 
     result = parse_reason(buf[prev .. $]);
     if (result.status != Status.Complete) {
@@ -289,11 +288,11 @@ class Response
       return Result(Status.Error, Error.StatusError);
     }
     ubyte ones = buf[i];
+    code = cast(ushort) ((hundreds - '0'.to!ubyte) * 100 +
+                         (tens - '0'.to!ubyte) * 10 +
+                         (ones -  '0'.to!ubyte));
 
-    return Result(Status.Complete,
-                  (hundreds - '0'.to!ubyte) * 100 +
-                  (tens - '0'.to!ubyte) * 10 +
-                  (ones -  '0'.to!ubyte));
+    return Result(Status.Complete, i);
   }
 
   Result parse_reason(ubyte[] buf)
