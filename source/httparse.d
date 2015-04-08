@@ -1,6 +1,6 @@
 module httparse;
 
-import std.conv : to;
+import std.conv : to, octal;
 import std.ascii : isDigit;
 
 
@@ -48,7 +48,7 @@ enum Status {
 
 
 enum Error : ulong {
-  TokenError, StatusError, NewLine, HttpVersion,
+  TokenError, StatusError, NewLine, HttpVersion,  TooManyHeaders, HeaderName, HeaderValue,
 }
 
 
@@ -96,6 +96,11 @@ class Headers
   void popFront() @property
   {
     ++pos;
+  }
+
+  Header* opIndex(int n)
+  {
+    return headers[n];
   }
 }
 
@@ -158,6 +163,125 @@ Result parse_version(ubyte[] buf)
 }
 
 
+Result parse_header(Headers headers, ubyte[] buf)
+{
+  int i = 0;
+  int last_i = 0;
+
+headers: foreach (header; headers) {
+    if (buf.length == i) {
+      return Result(Status.Partial, ulong.max);
+    }
+    ++i;
+    ubyte b = buf[i];
+
+    if (b == '\r'.to!ubyte) {
+      if (buf[++i] != '\n'.to!ubyte) {
+        return Result(Status.Error, Error.NewLine);
+      }
+      return Result(Status.Complete, i);
+    }
+    else if (b == '\n'.to!ubyte) {
+      ++i;
+      return Result(Status.Complete, i);
+    }
+
+    last_i = i;
+
+    // parse header until Colon.
+    for (;;) {
+      if (buf.length == i) {
+        return Result(Status.Partial, ulong.max);
+      }
+
+      b = buf[i];
+      ++i;
+      if (b == ':'.to!ubyte) {
+        header.name = cast(string) cast(char[]) buf[last_i .. i-1];
+        debug(httparse) writeln(cast(char[]) header.name);
+        break;
+      }
+      else if (!is_token(b)) {
+        return Result(Status.Error, Error.HeaderName);
+      }
+    }
+
+    // wat whitespace between colon and value.
+    for (;;) {
+      if (buf.length == i) {
+        return Result(Status.Partial, ulong.max);
+      }
+
+      b = buf[i];
+      ++i;
+      if (!(b == ' '.to!ubyte || b == '\t'.to!ubyte)) {
+        --i;
+        last_i = i;
+        break;
+      }
+    }
+
+    // parse value til EOL
+    while (buf.length - i >= 8) {
+      foreach (_; 0 .. 8) {
+        b = buf[i];
+        ++i;
+        if (!is_token(b)) {
+          if ((b < octal!40 && b != octal!11) || b == octal!177) {
+            if (b == '\r'.to!ubyte) {
+              if(buf[i] != '\n'.to!ubyte) {
+                return Result(Status.Error, Error.HeaderValue);
+              }
+              header.value = buf[last_i .. i-1];
+              debug(httparse) writeln(cast(char[]) header.value);
+              continue headers;
+            }
+            else if (b == '\n'.to!ubyte) {
+              header.value = buf[last_i .. i];
+              debug(httparse) writeln(cast(char[]) header.value);
+              continue headers;
+            }
+            else {
+              return Result(Status.Error, Error.HeaderValue);
+            }
+          }
+        }
+      }
+    }
+
+    for (;;) {
+      if (buf.length == i) {
+        return Result(Status.Partial, ulong.max);
+      }
+
+      b = buf[i];
+      ++i;
+      if (!(is_token(b))) {
+        if ((b < octal!40 && b != octal!11) || b == octal!177) {
+          if (b == '\r'.to!ubyte) {
+            if(buf[i] != '\n'.to!ubyte) {
+              return Result(Status.Error, Error.HeaderValue);
+            }
+            header.value = buf[last_i .. i-1];
+            debug(httparse) writeln(cast(char[]) header.value);
+            break;
+          }
+          else if (b == '\n'.to!ubyte) {
+            header.value = buf[last_i .. i];
+            debug(httparse) writeln(cast(char[]) header.value);
+            break;
+          }
+          else {
+            return Result(Status.Error, Error.HeaderValue);
+          }
+        }
+      }
+    }
+  }
+  return Result(Status.Error, Error.TooManyHeaders);
+}
+
+
 class Request
 {
   Headers headers;
@@ -204,14 +328,19 @@ class Request
       return result;
     }
 
-    prev += result.sep + 1;
-    ulong len = original_length - (prev + result.sep);
+    ulong len = original_length - result.sep;
+    prev = result.sep;
 
+    result = parse_header(headers, buf[prev .. $]);
+    if (result.status != Status.Complete) {
+      return result;
+    }
     return Result(Status.Complete, original_length);
   }
 }
 
 
+// simple request
 unittest
 {
   Header*[] arr = [new Header(null, null),
@@ -220,11 +349,35 @@ unittest
                    new Header(null, null)];
 
   auto headers = new Headers(arr);
-
   auto req = new Request(headers);
 
   string buffer = "GET / HTTP/1.1\r\n\r\n";
   auto result = req.parse(cast(ubyte[]) buffer);
+  assert(req.method == "GET");
+  assert(req.path == "/");
+  debug(httparse) result.writeln;
+}
+
+
+// request headers
+unittest
+{
+  Header*[] arr = [new Header(null, null),
+                   new Header(null, null),
+                   new Header(null, null),
+                   new Header(null, null)];
+
+  auto headers = new Headers(arr);
+  auto req = new Request(headers);
+
+  string buffer = "GET / HTTP/1.1\r\nHost: foo.com\r\nCookie: \r\n\r\n";
+  auto result = req.parse(cast(ubyte[]) buffer);
+  assert(req.method == "GET");
+  assert(req.path == "/");
+  assert(headers[0].name == "Host");
+  assert(headers[0].value == cast(ubyte[])"foo.com");
+  assert(headers[1].name == "Cookie");
+  assert(headers[1].value == cast(ubyte[])"");
   debug(httparse) result.writeln;
 }
 
