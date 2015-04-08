@@ -100,59 +100,6 @@ class Headers
 }
 
 
-class Request
-{
-  Headers headers;
-  string method;
-  string path;
-  ubyte[] http_version;
-  
-  this(Headers _headers)
-  {
-    headers = _headers;
-  }
-
-  Result parse(ubyte[] buf)
-  {
-    ulong prev;
-
-    ulong original_length = buf.length;
-    Result result = parse_token(buf);
-    if (result.status != Status.Complete) {
-      return result;
-    }
-    method = cast(string) cast(char[])buf[0 .. result.sep];
-    debug(httparse) writeln("method: ", method);
-    prev = result.sep+1;
-
-    result = parse_token(buf[prev .. $]);
-    if (result.status != Status.Complete) {
-      return result;
-    }
-
-    path = cast(string) cast(char[]) buf[prev .. (prev+result.sep)];
-    debug(httparse) writeln("path: ", path);
-    prev += result.sep+1;
-
-    result = parse_version(buf[prev .. $]);
-    if (result.status != Status.Complete) {
-      return result;
-    }
-    http_version = buf[prev .. (prev+result.sep+1)];
-    debug(httparse) writeln("HTTP_VERSION: ", cast(char[]) http_version);
-
-    result = newline(buf);
-    if (result.status != Status.Complete) {
-      return result;
-    }
-
-    ulong len = original_length - (prev + result.sep);
-
-    return Result(Status.Complete, original_length);
-  }
-}
-
-
 Result parse_token(ubyte[] buf)
 {
   foreach (i, b; buf) {
@@ -208,6 +155,60 @@ Result parse_version(ubyte[] buf)
     return Result(Status.Complete, i);
   }
   return Result(Status.Error, Error.HttpVersion);
+}
+
+
+class Request
+{
+  Headers headers;
+  string method;
+  string path;
+  ubyte[] http_version;
+
+  this(Headers _headers)
+  {
+    headers = _headers;
+  }
+
+  Result parse(ubyte[] buf)
+  {
+    ulong prev;
+
+    ulong original_length = buf.length;
+    Result result = parse_token(buf);
+    if (result.status != Status.Complete) {
+      return result;
+    }
+    method = cast(string) cast(char[])buf[0 .. result.sep];
+    debug(httparse) writeln("method: ", method);
+    prev = result.sep+1;
+
+    result = parse_token(buf[prev .. $]);
+    if (result.status != Status.Complete) {
+      return result;
+    }
+
+    path = cast(string) cast(char[]) buf[prev .. (prev+result.sep)];
+    debug(httparse) writeln("path: ", path);
+    prev += result.sep+1;
+
+    result = parse_version(buf[prev .. $]);
+    if (result.status != Status.Complete) {
+      return result;
+    }
+    http_version = buf[prev .. (prev+result.sep+1)];
+    debug(httparse) writeln("HTTP_VERSION: ", cast(char[]) http_version);
+
+    result = newline(buf);
+    if (result.status != Status.Complete) {
+      return result;
+    }
+
+    prev += result.sep + 1;
+    ulong len = original_length - (prev + result.sep);
+
+    return Result(Status.Complete, original_length);
+  }
 }
 
 
