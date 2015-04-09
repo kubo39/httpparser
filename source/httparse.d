@@ -102,6 +102,31 @@ class Headers
   {
     return headers[n];
   }
+
+  size_t length() @property
+  {
+    return headers.length;
+  }
+
+  void pushBack(Header* header)
+  {
+    headers ~= header;
+  }
+
+  template opOpAssign(string op) if (op == "~")
+  {
+    alias pushBack opOpAssign;
+  }
+}
+
+
+unittest
+{
+  Header*[] arr = [];
+
+  auto headers = new Headers(arr);
+  headers ~= new Header(null, null);
+  assert(headers.length == 1);
 }
 
 
