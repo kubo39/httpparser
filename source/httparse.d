@@ -420,7 +420,7 @@ unittest
 class Response
 {
   string http_version;
-  ushort code;
+  ushort status_code;
   string reason;
   Headers headers;
 
@@ -442,24 +442,24 @@ class Response
     debug(httparse) writeln("HTTP_VERSION: ", http_version);
     prev = result.sep+2;
 
-    result = parse_code(buf[prev .. prev+3]);
+    result = parse_status_code(buf[prev .. prev+3]);
     if (result.status != Status.Complete) {
       return result;
     }
-    debug(httparse) writeln("status code: ", code);
+    debug(httparse) writeln("status code: ", status_code);
     prev += result.sep+1;
 
     result = parse_reason(buf[prev .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
-    reason = cast(string) cast(char[]) buf[prev .. prev+result.sep+1];
+    reason = cast(string) cast(char[]) buf[prev+1 .. prev+result.sep];
     debug(httparse) writeln("reason phrase: ", reason);
 
     return Result(Status.Complete, original_length);
   }
 
-  Result parse_code(ubyte[] buf)
+  Result parse_status_code(ubyte[] buf)
   {
     int i;
 
@@ -477,9 +477,9 @@ class Response
       return Result(Status.Error, Error.StatusError);
     }
     ubyte ones = buf[i];
-    code = cast(ushort) ((hundreds - '0'.to!ubyte) * 100 +
-                         (tens - '0'.to!ubyte) * 10 +
-                         (ones -  '0'.to!ubyte));
+    status_code = cast(ushort) ((hundreds - '0'.to!ubyte) * 100 +
+                                (tens - '0'.to!ubyte) * 10 +
+                                (ones -  '0'.to!ubyte));
 
     return Result(Status.Complete, i);
   }
@@ -513,5 +513,7 @@ unittest
   string buffer = "HTTP/1.1 200 OK\r\n\r\n";
   auto result = res.parse(cast(ubyte[]) buffer);
   assert(res.http_version == "HTTP/1.1");
+  assert(res.status_code == 200);
+  assert(res.reason == "OK");
   debug(httparse) result.writeln;
 }
