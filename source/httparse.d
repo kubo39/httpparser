@@ -312,7 +312,7 @@ class Request
   Headers headers;
   string method;
   string path;
-  ubyte[] http_version;
+  string http_version;
 
   this(Headers _headers)
   {
@@ -345,8 +345,8 @@ class Request
     if (result.status != Status.Complete) {
       return result;
     }
-    http_version = buf[prev .. (prev+result.sep+1)];
-    debug(httparse) writeln("HTTP_VERSION: ", cast(char[]) http_version);
+    http_version = cast(string) cast(char[]) buf[prev .. (prev+result.sep+1)];
+    debug(httparse) writeln("HTTP_VERSION: ", http_version);
 
     result = newline(buf);
     if (result.status != Status.Complete) {
@@ -380,6 +380,7 @@ unittest
   auto result = req.parse(cast(ubyte[]) buffer);
   assert(req.method == "GET");
   assert(req.path == "/");
+  assert(req.http_version == "HTTP/1.1");
   debug(httparse) result.writeln;
 }
 
@@ -399,6 +400,7 @@ unittest
   auto result = req.parse(cast(ubyte[]) buffer);
   assert(req.method == "GET");
   assert(req.path == "/");
+  assert(req.http_version == "HTTP/1.1");
   assert(headers[0].name == "Host");
   assert(headers[0].value == cast(ubyte[])"foo.com");
   assert(headers[1].name == "Cookie");
@@ -409,7 +411,7 @@ unittest
 
 class Response
 {
-  ubyte[] http_version;
+  string http_version;
   ushort code;
   string reason;
   Headers headers;
@@ -428,8 +430,8 @@ class Response
     if (result.status != Status.Complete) {
       return result;
     }
-    http_version = buf[0 .. result.sep+1];
-    debug(httparse) writeln("HTTP_VERSION: ", cast(char[]) http_version);
+    http_version = cast(string) cast(char[]) buf[0 .. result.sep+1];
+    debug(httparse) writeln("HTTP_VERSION: ", http_version);
     prev = result.sep+2;
 
     result = parse_code(buf[prev .. prev+3]);
@@ -502,5 +504,6 @@ unittest
 
   string buffer = "HTTP/1.1 200 OK\r\n\r\n";
   auto result = res.parse(cast(ubyte[]) buffer);
+  assert(res.http_version == "HTTP/1.1");
   debug(httparse) result.writeln;
 }
