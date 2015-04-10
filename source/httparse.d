@@ -222,7 +222,7 @@ headers: foreach (header; headers) {
       b = buf[i];
       ++i;
       if (b == ':'.to!ubyte) {
-        header.name = cast(string) cast(char[]) buf[last_i .. i-1];
+        header.name = cast(string) buf[last_i .. i-1];
         debug(httparse) writeln(cast(char[]) header.name);
         break;
       }
@@ -328,7 +328,7 @@ class Request
     if (result.status != Status.Complete) {
       return result;
     }
-    method = cast(string) cast(char[])buf[0 .. result.sep];
+    method = cast(string) buf[0 .. result.sep];
     debug(httparse) writeln("method: ", method);
     prev = result.sep+1;
 
@@ -337,7 +337,7 @@ class Request
       return result;
     }
 
-    path = cast(string) cast(char[]) buf[prev .. (prev+result.sep)];
+    path = cast(string) buf[prev .. (prev+result.sep)];
     debug(httparse) writeln("path: ", path);
     prev += result.sep+1;
 
@@ -353,7 +353,6 @@ class Request
       return result;
     }
 
-    ulong len = original_length - result.sep;
     prev = result.sep;
 
     result = parse_header(headers, buf[prev .. $]);
@@ -443,7 +442,7 @@ class Response
     if (result.status != Status.Complete) {
       return result;
     }
-    reason = cast(string) cast(char[]) buf[prev .. prev+result.sep+1];
+    reason = cast(string) buf[prev .. prev+result.sep+1];
     debug(httparse) writeln("reason phrase: ", reason);
 
     return Result(Status.Complete, original_length);
