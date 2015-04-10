@@ -331,7 +331,6 @@ class Request
   {
     ulong prev;
 
-    ulong original_length = buf.length;
     Result result = parse_token(buf);
     if (result.status != Status.Complete) {
       return result;
@@ -361,14 +360,13 @@ class Request
       return result;
     }
 
-    ulong len = original_length - result.sep;
     prev = result.sep;
 
     result = parse_header(headers, buf[prev .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
-    return Result(Status.Complete, original_length);
+    return Result(Status.Complete, buf.length);
   }
 }
 
@@ -433,7 +431,6 @@ class Response
   {
     ulong prev;
 
-    ulong original_length = buf.length;
     Result result = parse_version(buf[0 .. $]);
     if (result.status != Status.Complete) {
       return result;
@@ -456,7 +453,7 @@ class Response
     reason = cast(string) cast(char[]) buf[prev+1 .. prev+result.sep];
     debug(httparse) writeln("reason phrase: ", reason);
 
-    return Result(Status.Complete, original_length);
+    return Result(Status.Complete, buf.length);
   }
 
   Result parse_status_code(ubyte[] buf)
