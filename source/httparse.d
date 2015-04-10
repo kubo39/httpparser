@@ -120,6 +120,14 @@ class Headers
 }
 
 
+// Headers implements InputRange interface.
+unittest
+{
+  import std.range;
+  assert(isInputRange!Headers);
+}
+
+
 unittest
 {
   Header*[] arr = [];
