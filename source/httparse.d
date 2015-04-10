@@ -517,3 +517,24 @@ unittest
   assert(res.reason == "OK");
   debug(httparse) result.writeln;
 }
+
+
+// reason with space & tab.
+unittest
+{
+  Header*[] arr = [new Header(null, null),
+                   new Header(null, null),
+                   new Header(null, null),
+                   new Header(null, null)];
+
+  auto headers = new Headers(arr);
+
+  auto res = new Response(headers);
+
+  string buffer = "HTTP/1.1 101 Switching Protocols\t\r\n\r\n";
+  auto result = res.parse(cast(ubyte[]) buffer);
+  assert(res.http_version == "HTTP/1.1");
+  assert(res.status_code == 101);
+  assert(res.reason == "Switching Protocols\t");
+  debug(httparse) result.writeln;
+}
