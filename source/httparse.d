@@ -120,6 +120,14 @@ class Headers
 }
 
 
+// Headers implements InputRange interface.
+unittest
+{
+  import std.range;
+  assert(isInputRange!Headers);
+}
+
+
 unittest
 {
   Header*[] arr = [];
@@ -312,7 +320,7 @@ class Request
   Headers headers;
   string method;
   string path;
-  ubyte[] http_version;
+  string http_version;
 
   this(Headers _headers)
   {
@@ -323,7 +331,6 @@ class Request
   {
     ulong prev;
 
-    ulong original_length = buf.length;
     Result result = parse_token(buf);
     if (result.status != Status.Complete) {
       return result;
@@ -345,8 +352,8 @@ class Request
     if (result.status != Status.Complete) {
       return result;
     }
-    http_version = buf[prev .. (prev+result.sep+1)];
-    debug(httparse) writeln("HTTP_VERSION: ", cast(char[]) http_version);
+    http_version = cast(string) buf[prev .. (prev+result.sep+1)];
+    debug(httparse) writeln("HTTP_VERSION: ", http_version);
 
     result = newline(buf);
     if (result.status != Status.Complete) {
@@ -359,7 +366,7 @@ class Request
     if (result.status != Status.Complete) {
       return result;
     }
-    return Result(Status.Complete, original_length);
+    return Result(Status.Complete, buf.length);
   }
 }
 
@@ -379,6 +386,7 @@ unittest
   auto result = req.parse(cast(ubyte[]) buffer);
   assert(req.method == "GET");
   assert(req.path == "/");
+  assert(req.http_version == "HTTP/1.1");
   debug(httparse) result.writeln;
 }
 
@@ -398,6 +406,7 @@ unittest
   auto result = req.parse(cast(ubyte[]) buffer);
   assert(req.method == "GET");
   assert(req.path == "/");
+  assert(req.http_version == "HTTP/1.1");
   assert(headers[0].name == "Host");
   assert(headers[0].value == cast(ubyte[])"foo.com");
   assert(headers[1].name == "Cookie");
@@ -408,8 +417,8 @@ unittest
 
 class Response
 {
-  ubyte[] http_version;
-  ushort code;
+  string http_version;
+  ushort status_code;
   string reason;
   Headers headers;
 
@@ -422,33 +431,32 @@ class Response
   {
     ulong prev;
 
-    ulong original_length = buf.length;
     Result result = parse_version(buf[0 .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
-    http_version = buf[0 .. result.sep+1];
-    debug(httparse) writeln("HTTP_VERSION: ", cast(char[]) http_version);
+    http_version = cast(string) cast(char[]) buf[0 .. result.sep+1];
+    debug(httparse) writeln("HTTP_VERSION: ", http_version);
     prev = result.sep+2;
 
-    result = parse_code(buf[prev .. prev+3]);
+    result = parse_status_code(buf[prev .. prev+3]);
     if (result.status != Status.Complete) {
       return result;
     }
-    debug(httparse) writeln("status code: ", code);
+    debug(httparse) writeln("status code: ", status_code);
     prev += result.sep+1;
 
     result = parse_reason(buf[prev .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
-    reason = cast(string) buf[prev .. prev+result.sep+1];
+    reason = cast(string) buf[prev+1 .. prev+result.sep];
     debug(httparse) writeln("reason phrase: ", reason);
 
-    return Result(Status.Complete, original_length);
+    return Result(Status.Complete, buf.length);
   }
 
-  Result parse_code(ubyte[] buf)
+  Result parse_status_code(ubyte[] buf)
   {
     int i;
 
@@ -466,9 +474,9 @@ class Response
       return Result(Status.Error, Error.StatusError);
     }
     ubyte ones = buf[i];
-    code = cast(ushort) ((hundreds - '0'.to!ubyte) * 100 +
-                         (tens - '0'.to!ubyte) * 10 +
-                         (ones -  '0'.to!ubyte));
+    status_code = cast(ushort) ((hundreds - '0'.to!ubyte) * 100 +
+                                (tens - '0'.to!ubyte) * 10 +
+                                (ones -  '0'.to!ubyte));
 
     return Result(Status.Complete, i);
   }
@@ -501,5 +509,29 @@ unittest
 
   string buffer = "HTTP/1.1 200 OK\r\n\r\n";
   auto result = res.parse(cast(ubyte[]) buffer);
+  assert(res.http_version == "HTTP/1.1");
+  assert(res.status_code == 200);
+  assert(res.reason == "OK");
+  debug(httparse) result.writeln;
+}
+
+
+// reason with space & tab.
+unittest
+{
+  Header*[] arr = [new Header(null, null),
+                   new Header(null, null),
+                   new Header(null, null),
+                   new Header(null, null)];
+
+  auto headers = new Headers(arr);
+
+  auto res = new Response(headers);
+
+  string buffer = "HTTP/1.1 101 Switching Protocols\t\r\n\r\n";
+  auto result = res.parse(cast(ubyte[]) buffer);
+  assert(res.http_version == "HTTP/1.1");
+  assert(res.status_code == 101);
+  assert(res.reason == "Switching Protocols\t");
   debug(httparse) result.writeln;
 }
