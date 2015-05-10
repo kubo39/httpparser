@@ -1,10 +1,10 @@
-# httparse
+# httpparser
 
 HTTP 1.x parser.
 
 ## Prerequuirements
 
-* DMD D Compiler >= 2.066.1
+* DMD D Compiler >= 2.067.1
 
 * DUB  >= 0.9.22
 
