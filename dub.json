@@ -1,9 +1,9 @@
 {
-    "name": "httparse",
+    "name": "httpparser",
     "description": "HTTP/1.x parser",
     "license": "MIT",
     "authors": ["kubo39"],
-    "targetName": "httparse",
+    "targetName": "httpparser",
     "targetType": "staticLibrary",
     "targetPath": "build",
     "workingDirectory": "build"
