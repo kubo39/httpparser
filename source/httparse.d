@@ -34,7 +34,7 @@ debug(httparse) import std.stdio : writeln;
 //
 
 
-bool is_token(ubyte b)
+bool isToken(ubyte b)
 {
   return (b > 0x1F && b < 0x7F);
 }
@@ -138,13 +138,13 @@ unittest
 }
 
 
-Result parse_token(ubyte[] buf)
+Result parseToken(ubyte[] buf)
 {
   foreach (i, b; buf) {
     if (b == ' '.to!ubyte || b == '\r'.to!ubyte || b == '\n'.to!ubyte) {
       return Result(Status.Complete, i);
     }
-    else if (!is_token(b)) {
+    else if (!isToken(b)) {
       return Result(Status.Error, Error.TokenError);
     }
   }
@@ -174,7 +174,7 @@ Result newline(ubyte[] buf)
 }
 
 
-Result parse_version(ubyte[] buf)
+Result parseVersion(ubyte[] buf)
 {
   uint i = 0;
 
@@ -196,7 +196,7 @@ Result parse_version(ubyte[] buf)
 }
 
 
-Result parse_header(Headers headers, ubyte[] buf)
+Result parseHeader(Headers headers, ubyte[] buf)
 {
   int i = 0;
   int last_i = 0;
@@ -234,7 +234,7 @@ headers: foreach (header; headers) {
         debug(httparse) writeln(cast(char[]) header.name);
         break;
       }
-      else if (!is_token(b)) {
+      else if (!isToken(b)) {
         return Result(Status.Error, Error.HeaderName);
       }
     }
@@ -259,7 +259,7 @@ headers: foreach (header; headers) {
       foreach (_; 0 .. 8) {
         b = buf[i];
         ++i;
-        if (!is_token(b)) {
+        if (!isToken(b)) {
           if ((b < octal!40 && b != octal!11) || b == octal!177) {
             if (b == '\r'.to!ubyte) {
               if(buf[i] != '\n'.to!ubyte) {
@@ -289,7 +289,7 @@ headers: foreach (header; headers) {
 
       b = buf[i];
       ++i;
-      if (!(is_token(b))) {
+      if (!(isToken(b))) {
         if ((b < octal!40 && b != octal!11) || b == octal!177) {
           if (b == '\r'.to!ubyte) {
             if(buf[i] != '\n'.to!ubyte) {
@@ -331,7 +331,7 @@ class Request
   {
     ulong prev;
 
-    Result result = parse_token(buf);
+    Result result = parseToken(buf);
     if (result.status != Status.Complete) {
       return result;
     }
@@ -339,7 +339,7 @@ class Request
     debug(httparse) writeln("method: ", method);
     prev = result.sep+1;
 
-    result = parse_token(buf[prev .. $]);
+    result = parseToken(buf[prev .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
@@ -348,7 +348,7 @@ class Request
     debug(httparse) writeln("path: ", path);
     prev += result.sep+1;
 
-    result = parse_version(buf[prev .. $]);
+    result = parseVersion(buf[prev .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
@@ -362,7 +362,7 @@ class Request
 
     prev = result.sep;
 
-    result = parse_header(headers, buf[prev .. $]);
+    result = parseHeader(headers, buf[prev .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
@@ -431,7 +431,7 @@ class Response
   {
     ulong prev;
 
-    Result result = parse_version(buf[0 .. $]);
+    Result result = parseVersion(buf[0 .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
