@@ -2,7 +2,8 @@ module httparse;
 
 import std.conv : to, octal;
 import std.ascii : isDigit;
-
+import std.range : isInputRange;
+import std.traits : Unqual;
 
 debug(httparse) import std.stdio : writeln;
 
@@ -121,11 +122,7 @@ class Headers
 
 
 // Headers implements InputRange interface.
-unittest
-{
-  import std.range;
-  assert(isInputRange!Headers);
-}
+static assert(isInputRange!(Unqual!Headers));
 
 
 unittest
