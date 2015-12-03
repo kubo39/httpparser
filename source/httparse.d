@@ -243,12 +243,11 @@ headers: foreach (header; headers) {
       }
 
       b = buf[i];
-      ++i;
       if (!(b == ' '.to!ubyte || b == '\t'.to!ubyte)) {
-        --i;
         last_i = i;
         break;
       }
+      ++i;
     }
 
     // parse value til EOL
