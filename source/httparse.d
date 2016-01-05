@@ -443,14 +443,14 @@ class Response
     debug(httparse) writeln("HTTP_VERSION: ", http_version);
     prev = result.sep+2;
 
-    result = parse_status_code(buf[prev .. prev+3]);
+    result = parseStatusCode(buf[prev .. prev+3]);
     if (result.status != Status.Complete) {
       return result;
     }
     debug(httparse) writeln("status code: ", status_code);
     prev += result.sep+1;
 
-    result = parse_reason(buf[prev .. $]);
+    result = parseReason(buf[prev .. $]);
     if (result.status != Status.Complete) {
       return result;
     }
@@ -460,7 +460,7 @@ class Response
     return Result(Status.Complete, buf.length);
   }
 
-  Result parse_status_code(const ubyte[] buf)
+  Result parseStatusCode(const ubyte[] buf)
   {
     int i;
 
@@ -485,7 +485,7 @@ class Response
     return Result(Status.Complete, i);
   }
 
-  Result parse_reason(const ubyte[] buf)
+  Result parseReason(const ubyte[] buf)
   {
     foreach (i, b; buf) {
       if (b == '\r'.to!ubyte || b == '\n'.to!ubyte) {
