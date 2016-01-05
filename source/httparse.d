@@ -157,7 +157,7 @@ Result parseToken(const ubyte[] buf)
 }
 
 
-Result newline(const ubyte[] buf)
+Result newline(const ref ubyte[] buf)
 {
   Result result = Result(Status.Error, Error.NewLine);
 
