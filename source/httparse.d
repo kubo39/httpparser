@@ -326,7 +326,7 @@ class Request
   string path;
   string http_version;
 
-  this(Headers _headers)
+  this(ref Headers _headers)
   {
     headers = _headers;
   }
@@ -511,8 +511,8 @@ unittest
 
   auto res = new Response(headers);
 
-  string buffer = "HTTP/1.1 200 OK\r\n\r\n";
-  auto result = res.parse(cast(const ubyte[]) buffer);
+  const buffer = "HTTP/1.1 200 OK\r\n\r\n";
+  auto result = res.parse(cast(ubyte[]) buffer);
   assert(res.http_version == "HTTP/1.1");
   assert(res.status_code == 200);
   assert(res.reason == "OK");
