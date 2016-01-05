@@ -41,15 +41,23 @@ bool isToken(ubyte b)
 }
 
 
-enum Status {
+enum Status
+{
   Complete,
   Partial,
   Error,
 }
 
 
-enum Error : ulong {
-  TokenError, StatusError, NewLine, HttpVersion,  TooManyHeaders, HeaderName, HeaderValue,
+enum Error
+{
+  TokenError,
+  StatusError,
+  NewLine,
+  HttpVersion,
+  TooManyHeaders,
+  HeaderName,
+  HeaderValue,
 }
 
 
@@ -78,7 +86,7 @@ class Headers
   Header*[] headers;
   size_t pos;
 
-  this(Header*[] _headers, size_t _pos = 0)
+  this(ref Header*[] _headers, size_t _pos = 0)
   {
     headers = _headers;
     pos = _pos;
@@ -135,7 +143,7 @@ unittest
 }
 
 
-Result parseToken(ubyte[] buf)
+Result parseToken(const ubyte[] buf)
 {
   foreach (i, b; buf) {
     if (b == ' '.to!ubyte || b == '\r'.to!ubyte || b == '\n'.to!ubyte) {
@@ -149,7 +157,7 @@ Result parseToken(ubyte[] buf)
 }
 
 
-Result newline(ubyte[] buf)
+Result newline(const ubyte[] buf)
 {
   Result result = Result(Status.Error, Error.NewLine);
 
@@ -171,7 +179,7 @@ Result newline(ubyte[] buf)
 }
 
 
-Result parseVersion(ubyte[] buf)
+Result parseVersion(const ubyte[] buf)
 {
   uint i = 0;
 
@@ -193,7 +201,7 @@ Result parseVersion(ubyte[] buf)
 }
 
 
-Result parseHeader(Headers headers, ubyte[] buf)
+Result parseHeader(ref Headers headers, ubyte[] buf)
 {
   int i = 0;
   int last_i = 0;
@@ -418,12 +426,12 @@ class Response
   string reason;
   Headers headers;
 
-  this(Headers _headers)
+  this(ref Headers _headers)
   {
     headers = _headers;
   }
 
-  Result parse(ubyte[] buf)
+  Result parse(const ubyte[] buf)
   {
     ulong prev;
 
@@ -452,7 +460,7 @@ class Response
     return Result(Status.Complete, buf.length);
   }
 
-  Result parse_status_code(ubyte[] buf)
+  Result parse_status_code(const ubyte[] buf)
   {
     int i;
 
@@ -477,7 +485,7 @@ class Response
     return Result(Status.Complete, i);
   }
 
-  Result parse_reason(ubyte[] buf)
+  Result parse_reason(const ubyte[] buf)
   {
     foreach (i, b; buf) {
       if (b == '\r'.to!ubyte || b == '\n'.to!ubyte) {
@@ -504,7 +512,7 @@ unittest
   auto res = new Response(headers);
 
   string buffer = "HTTP/1.1 200 OK\r\n\r\n";
-  auto result = res.parse(cast(ubyte[]) buffer);
+  auto result = res.parse(cast(const ubyte[]) buffer);
   assert(res.http_version == "HTTP/1.1");
   assert(res.status_code == 200);
   assert(res.reason == "OK");
