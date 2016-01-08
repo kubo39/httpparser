@@ -236,7 +236,7 @@ headers: foreach (header; headers) {
       ++i;
       if (b == ':'.to!ubyte) {
         header.name = cast(string) buf[last_i .. i-1];
-        debug(httparse) writeln(cast(char[]) header.name);
+        debug(httparse) writeln(cast(string) header.name);
         break;
       }
       else if (!isToken(b)) {
@@ -439,7 +439,7 @@ class Response
     if (result.status != Status.Complete) {
       return result;
     }
-    http_version = cast(string) cast(char[]) buf[0 .. result.sep+1];
+    http_version = cast(string) buf[0 .. result.sep+1];
     debug(httparse) writeln("HTTP_VERSION: ", http_version);
     prev = result.sep+2;
 
