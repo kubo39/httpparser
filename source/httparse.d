@@ -86,7 +86,7 @@ class Headers
   Header*[] headers;
   size_t pos;
 
-  this(ref Header*[] _headers, size_t _pos = 0)
+  this(Header*[] _headers, size_t _pos = 0)
   {
     headers = _headers;
     pos = _pos;
@@ -157,7 +157,7 @@ Result parseToken(const ubyte[] buf)
 }
 
 
-Result newline(const ref ubyte[] buf)
+Result newline(const ubyte[] buf)
 {
   Result result = Result(Status.Error, Error.NewLine);
 
@@ -201,7 +201,7 @@ Result parseVersion(const ubyte[] buf)
 }
 
 
-Result parseHeader(ref Headers headers, ubyte[] buf)
+Result parseHeader(Headers headers, ubyte[] buf)
 {
   int i = 0;
   int last_i = 0;
@@ -326,7 +326,7 @@ class Request
   string path;
   string http_version;
 
-  this(ref Headers _headers)
+  this(Headers _headers)
   {
     headers = _headers;
   }
@@ -426,7 +426,7 @@ class Response
   string reason;
   Headers headers;
 
-  this(ref Headers _headers)
+  this(Headers _headers)
   {
     headers = _headers;
   }
